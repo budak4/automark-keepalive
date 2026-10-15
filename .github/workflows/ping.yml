@@ -1,0 +1,36 @@
+name: keep-awake
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ping AutoMark (halang Render tidur)
+        run: |
+          for i in 1 2 3; do
+            code=$(curl -sS -m 90 -o /dev/null -w "%{http_code}" https://automark-q5a9.onrender.com/health || echo "000")
+            echo "percubaan $i -> HTTP $code"
+            if [ "$code" = "200" ]; then break; fi
+            sleep 15
+          done
+
+      - name: Heartbeat harian (elak GitHub matikan cron selepas 60 hari)
+        run: |
+          DAY=$(date -u +%Y-%m-%d)
+          echo "$DAY" > heartbeat.txt
+          if [ -n "$(git status --porcelain heartbeat.txt)" ]; then
+            git config user.name "automark-bot"
+            git config user.email "automark-bot@users.noreply.github.com"
+            git add heartbeat.txt
+            git commit -m "heartbeat $DAY"
+            git push || true
+          fi
